@@ -1,0 +1,116 @@
+import pandas as pd
+import seaborn as sns
+import numpy as np
+sns.set(style='darkgrid')
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score,train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn import svm
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.pipeline import make_pipeline 
+#--------------------------Read Data-------------------------------------------
+
+
+df = pd.read_csv("C:\\Users\\User\\Desktop\\loan\\loan-data.csv", encoding=('latin-1'),error_bad_lines=False)
+print(df)
+
+#--------------------------Data Preporcessing (Cleaning Data)------------------
+df['Gender'] = df['Gender'].fillna('Female') 
+df['LoanAmount'] = df['LoanAmount'].fillna(df['LoanAmount'].median())
+df['Dependents'] = df['Dependents'].fillna('1')
+df['Self_Employed']= df['Self_Employed'].fillna('Yes')
+df['Credit_History'] = df['Credit_History'].fillna(1)
+df['Loan_Amount_Term'] = df['Loan_Amount_Term'].fillna(df['Loan_Amount_Term'].median())
+df['Married'] = df['Married'].fillna('Yes')
+df.drop(columns=['Loan_ID'], inplace = True)
+df['Married'].replace({'No':0, 'Yes':1},inplace=True)
+df['Gender'].replace({'Male':0, 'Female':1},inplace=True)
+df['Education'].replace({'Graduate':1,'Not Graduate':0},inplace=True)
+df['Self_Employed'].replace({'No':0, 'Yes':1},inplace=True)
+df['Loan_Status'].replace({'N':0, 'Y':1},inplace=True)
+df['Property_Area'].replace({'Rural':1, 'Semiurban':3, 'Urban':2},inplace=True)
+df['Dependents'].replace({'3+':3},inplace=True)
+#-------------------------------Anomly Detection Using IQR---------------------
+#first quartile (Q1)
+Q1 = np.percentile(df['CoapplicantIncome'], 25, interpolation = 'midpoint')
+print(Q1)
+# Third quartile (Q3)
+Q3 = np.percentile(df['CoapplicantIncome'], 75, interpolation = 'midpoint')
+print(Q3)
+#IQR = Q3 - Q1
+IQR = df.CoapplicantIncome.describe()['75%'] - df.CoapplicantIncome.describe()['25%']
+print ("Population IQR : ", IQR)
+print("IQR =" , IQR)
+#find outliers
+smallOut = Q1 - 1.5*IQR
+largeOut = Q3 + 1.5*IQR
+print("Smallest outlyer " , smallOut , "largest outlyer " , largeOut)
+sns.boxplot(x='Loan_Status', y='CoapplicantIncome',data=df)
+plt.show()
+#-------------------------Summary statistics and visualization-----------------
+mean_value = df[['ApplicantIncome']].mean()
+median_value = df[['ApplicantIncome']].median()
+vari = np.var(df[['ApplicantIncome']])
+standar_devation=np.std(df[['ApplicantIncome']])
+print("mean" ,mean_value)
+print("median" , median_value)
+print("Variance " , vari)
+print("standar_devation " , standar_devation)
+sns.histplot(df['ApplicantIncome'])
+fig = plt.figure()
+##############################################################################
+#----------------------------- Plots To View ---------------------
+
+sns.countplot(x='Self_Employed',hue='Loan_Status',data=df)
+plt.show()
+y=df['Married']
+df.groupby(y).size().plot(kind =  'pie',autopct='%.2f')
+plt.show()
+sns.countplot(x='Married', hue='Loan_Status',data=df)
+plt.show()
+sns.catplot(x='Gender',y='LoanAmount',data=df,kind='box')
+plt.show()
+#-------------------------------Scatter-------------------------------------------------
+var_name = "LoanAmount"
+plt.figure(figsize=(12,6))
+sns.regplot(x=var_name, y='ApplicantIncome', data=df, scatter_kws={'alpha':0.5, 's':30})
+plt.xlabel(var_name, fontsize=12)
+plt.ylabel('ApplicantIncome', fontsize=12)
+plt.title("Distribution of y variable with "+var_name, fontsize=15)
+plt.show()
+
+#------------------------------------split data to train and test data.--------------------
+x = df[['Gender','Dependents','Education','Self_Employed',
+       'Loan_Amount_Term','Credit_History','Property_Area']]
+y = df['Loan_Status']
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.15)
+#--------------------------------Apply predictive analytic techniques-----------------------
+
+#--------------------------------Logistic Reg Algo--------------------------------------------
+print("Logistic Regression :")
+clf = LogisticRegression(max_iter=1000).fit(x_train, y_train)
+e = clf.predict(x_test)
+print( "confusion matrix",confusion_matrix(y_test, e))
+print( "classification report",classification_report(y_test, e))
+acc = accuracy_score(y_test, e)
+print("Accuracy: %.3f" % acc)
+#--------------------------------Decision Tree Algorithm---------------------------------------
+print("Decision Tree :")
+df_model = DecisionTreeClassifier(criterion='gini',max_depth=7)
+p1=df_model.fit(x_train, y_train)
+predict_y = df_model.predict(x_test)
+print("classification_report.Decision Tree",classification_report(y_test, predict_y))
+acc2 = accuracy_score(y_test, predict_y)
+print("Accuracy: %.3f" % acc2)
+#-------------------------------SVM Algo--------------------------------------------------------
+print("SVM :")
+clf1 =svm.SVC(kernel='linear')
+p=clf1.fit(x_train,y_train)
+y_pred = clf1.predict(x_test)
+print(" classification report SVM",classification_report(y_test, y_pred))
+acc1 = accuracy_score(y_test, y_pred)
+print("Accuracy: %.3f" % acc1)
+#----------------------------------------------------------------------------------------------
